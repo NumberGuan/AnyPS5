@@ -103,6 +103,19 @@ class BundleTests(unittest.TestCase):
             self.bundle()
         self.assertEqual((self.root / "bundle.zip").read_bytes(), b"keep")
 
+    def test_bundle_created_before_archive_open_is_not_overwritten(self):
+        target = self.root / "bundle.zip"
+        open_zip = zipfile.ZipFile
+
+        def create_competing_bundle(*args, **kwargs):
+            target.write_bytes(b"another report")
+            return open_zip(*args, **kwargs)
+
+        with patch.object(zipfile, "ZipFile", side_effect=create_competing_bundle):
+            with self.assertRaises(FileExistsError):
+                self.bundle()
+        self.assertEqual(target.read_bytes(), b"another report")
+
 
 class MainTests(unittest.TestCase):
     identity = {"home": "/home/ana", "user": "ana", "host": "serverfestivo"}
